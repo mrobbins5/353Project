@@ -27,6 +27,9 @@
 #include "launchpad_io.h"
 #include "HW3_images.h"
 #include "ece353_hw2_fonts.h"
+#include "ft6x06.h"
+#include "serial_debug.h"
+
 
 //added by Mark
 
@@ -73,6 +76,29 @@ static uint16_t ypos = ROWS/2;
 static uint16_t animate = 0; 
 
 char msg1[]= "ERIC SIMULATOR 2018"; 
+
+//FOR LCD TOUCHSCREEN
+//*****************************************************************************
+void DisableInterrupts(void)
+{
+  __asm {
+         CPSID  I
+  }
+}
+
+//*****************************************************************************
+// 
+//*****************************************************************************
+void EnableInterrupts(void)
+{
+  __asm {
+    CPSIE  I
+  }
+}
+
+
+//*****************************************************************************
+
 
 //*****************************************************************************
 //DEBOUNCE//
@@ -189,6 +215,13 @@ void initialize_hardware(void)
 	//Initializes the GPIO pins connected to the PS2 Joystick.
   ps2_initialize(); 
 	
+	//Setup hardware for LCD touchscreen
+	DisableInterrupts();
+  gp_timer_config_32(TIMER0_BASE, TIMER_TAMR_TAMR_1_SHOT, false, false);
+  init_serial_debug(true, true);
+  ft6x06_init();
+  EnableInterrupts();
+	
 }
 
 
@@ -202,7 +235,9 @@ main(void)
 	struct missle* m_curr;
 	int i = 0;  
 	char msg[80];
-
+	uint16_t x = 0; 
+	uint16_t y = 0; 
+	
 	//Set up the linked list for missles
 	
   initialize_hardware();
@@ -237,9 +272,24 @@ main(void)
 
 
 		//Temporary stop for testing
-		while(!missile_fired){
-			
-		}
+			// while( (COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y())){
+			while (1) {
+				
+				// count++; 
+				gp_timer_wait(TIMER0_BASE, 5000000);
+				
+				if (ft6x06_read_td_status() > 0) {
+					x = ft6x06_read_x();
+					y = ft6x06_read_y();
+					printf("X=%d Y=%d\n\r",x,y);
+				}
+				else {
+					printf("NO EVENT\n\r");
+				}
+				
+			}
+
+		
   	lcd_clear_screen(LCD_COLOR_BLACK);
 		
 	
