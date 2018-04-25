@@ -205,7 +205,7 @@ void initialize_hardware(void)
 	//// setup the timers ////
 	//Timer0A and Timer0B
   gp_timer_config_16(TIMER0_BASE, TIMER_TAMR_TAMR_PERIOD, false, true, 55555);
-	
+//	gp_timer_config_24(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, true);
 
 	//// setup GPIO for LED drive ////
 	//Configures the GPIO pins connected to the Launchpad LEDs and push buttons
@@ -216,11 +216,11 @@ void initialize_hardware(void)
   ps2_initialize(); 
 	
 	//Setup hardware for LCD touchscreen
-	DisableInterrupts();
-  gp_timer_config_32(TIMER0_BASE, TIMER_TAMR_TAMR_1_SHOT, false, false);
-  init_serial_debug(true, true);
-  ft6x06_init();
-  EnableInterrupts();
+//	DisableInterrupts();
+//  gp_timer_config_32(TIMER0_BASE, TIMER_TAMR_TAMR_1_SHOT, false, false);
+//  init_serial_debug(true, true);
+//  ft6x06_init();
+//  EnableInterrupts();
 	
 }
 
@@ -269,13 +269,11 @@ main(void)
 		lcd_print_stringXY("--------------",3,11,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 		lcd_print_stringXY("--------------",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 
-
-
+/*
 		//Temporary stop for testing
-			// while( (COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y())){
-			while (1) {
+			 while( !((COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y()))){
+
 				
-				// count++; 
 				gp_timer_wait(TIMER0_BASE, 5000000);
 				
 				if (ft6x06_read_td_status() > 0) {
@@ -288,7 +286,7 @@ main(void)
 				}
 				
 			}
-
+*/
 		
   	lcd_clear_screen(LCD_COLOR_BLACK);
 		
