@@ -71,6 +71,9 @@ plane_t plane;
 struct missle * m_head = NULL;
 struct missle * m_tail = NULL;
 
+struct student * s_head = NULL;
+struct student * s_tail = NULL;
+
 static uint16_t xpos = COLS/2;  
 static uint16_t ypos = ROWS/2;  
 
@@ -208,7 +211,7 @@ void initialize_hardware(void)
   gp_timer_config_16(TIMER0_BASE, TIMER_TAMR_TAMR_PERIOD, false, true, 55555);
 	//gp_timer_config_24(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, true);
 	//Configure the timer for the PWM
-	gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 55555);
+
 
 	
 	//// setup GPIO for LED drive ////
@@ -280,7 +283,7 @@ main(void)
 		lcd_print_stringXY("--------------",3,11,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 		lcd_print_stringXY("--------------",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 
-
+		buzzer(true);  
 		//Temporary stop for testing
 			 while( ( (COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y()))){
 
@@ -299,7 +302,7 @@ main(void)
 				}
 				
 			}
-
+			buzzer(false);
 		
   	lcd_clear_screen(LCD_COLOR_BLACK);
 		
@@ -382,6 +385,20 @@ main(void)
 		
   }		// end of while(1) loop
 }
+//*****************************************************************************
+//Enable/Disable sound
+//*****************************************************************************
+void buzzer(bool on){
+	
+	//Turn the buzzer on 
+	if(on){
+		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 500);
+	}
+	else{
+		gp_timer_config_16PWM(TIMER1_BASE, ~TIMER_TAMR_TAMR_PERIOD, false, false, 55555);
+	}
+}
+
 //*****************************************************************************
 //PLANE MOVEMENT
 //*****************************************************************************
@@ -517,6 +534,71 @@ bool remove_missle(struct missle* del_missle){
 //	free(curr->nxt);
 	curr->nxt = NULL;
 	m_tail = curr;
+}
+return true;
+}
+
+//*****************************************************************************
+//STUDENTS//
+//*****************************************************************************
+//Adds a new student to the end of the linked list
+void add_student(void){
+     struct student* newStudent = malloc(sizeof(struct student)); 
+     struct student* curr;
+	
+     newStudent->x_loc = xpos; 
+     newStudent->y_loc = ypos - (PLANE_HEIGHT / 2); 
+     newStudent->nxt = NULL;
+    //This is the first missile
+     if (m_head==NULL){
+        s_head = newStudent;
+        s_tail = newStudent;
+    }
+        //Update all values
+      else{
+				newStudent->nxt = s_head;
+				s_head = newStudent;
+			}
+}
+
+void update_studnetPos(void){
+  struct student* curr;
+  struct student* rem;
+  curr = s_head;
+  while (curr!=NULL){
+		//Remove missile if too close
+  if ((curr->y_loc+1)>ROWS){
+    rem = curr;
+    remove_student(rem);
+  }
+  else{
+   curr->y_loc = curr->y_loc - 1;
+  }
+  curr = curr->nxt;
+  }
+}
+
+//Will remove outdated missiles
+bool remove_student(struct student* del_student){
+//Pass in missile, remove it
+    
+   struct student* curr;
+   curr = s_head;
+   
+	//For condition with just one node
+	if (s_head == s_tail){
+		m_head = NULL;
+		m_tail = NULL;
+	}
+ //Iterate through the loop looking for the missile
+	else{
+  while(curr->nxt != s_tail){
+     curr = curr->nxt;
+	}
+	
+//	free(curr->nxt);
+	curr->nxt = NULL;
+	s_tail = curr;
 }
 return true;
 }
