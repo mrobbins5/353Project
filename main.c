@@ -29,6 +29,7 @@
 #include "ece353_hw2_fonts.h"
 #include "ft6x06.h"
 #include "serial_debug.h"
+#include "launchpad_io.h"
 
 
 //added by Mark
@@ -205,8 +206,11 @@ void initialize_hardware(void)
 	//// setup the timers ////
 	//Timer0A and Timer0B
   gp_timer_config_16(TIMER0_BASE, TIMER_TAMR_TAMR_PERIOD, false, true, 55555);
-//	gp_timer_config_24(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, true);
+	//gp_timer_config_24(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, true);
+	//Configure the timer for the PWM
+	gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 55555);
 
+	
 	//// setup GPIO for LED drive ////
 	//Configures the GPIO pins connected to the Launchpad LEDs and push buttons
 	lp_io_init(); 
@@ -219,9 +223,16 @@ void initialize_hardware(void)
 //	DisableInterrupts();
 //  gp_timer_config_32(TIMER0_BASE, TIMER_TAMR_TAMR_1_SHOT, false, false);
 //  init_serial_debug(true, true);
-//  ft6x06_init();
+    ft6x06_init();
 //  EnableInterrupts();
-	
+
+		//PWM kickoff
+		gpio_enable_port(GPIOF_BASE); 
+		gpio_config_digital_enable(GPIOF_BASE, PF2); 
+		gpio_config_enable_output(GPIOF_BASE, PF2); 
+		gpio_config_alternate_function(GPIOF_BASE, PF2); 
+		gpio_config_port_control(GPIOF_BASE, GPIO_PCTL_PF2_M, GPIO_PCTL_PF2_T1CCP0); 
+
 }
 
 
@@ -269,16 +280,18 @@ main(void)
 		lcd_print_stringXY("--------------",3,11,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 		lcd_print_stringXY("--------------",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 
-/*
+
 		//Temporary stop for testing
-			 while( !((COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y()))){
+			 while( ( (COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y()))){
 
 				
-				gp_timer_wait(TIMER0_BASE, 5000000);
-				
+				//Wait for a bit
+				while(counterA < 20){}
+					
+				x = ft6x06_read_x(); 
+				y = ft6x06_read_y(); 
 				if (ft6x06_read_td_status() > 0) {
-					x = ft6x06_read_x();
-					y = ft6x06_read_y();
+				
 					printf("X=%d Y=%d\n\r",x,y);
 				}
 				else {
@@ -286,7 +299,7 @@ main(void)
 				}
 				
 			}
-*/
+
 		
   	lcd_clear_screen(LCD_COLOR_BLACK);
 		
