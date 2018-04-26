@@ -30,6 +30,9 @@
 #include "ft6x06.h"
 #include "serial_debug.h"
 #include "launchpad_io.h"
+#include "wireless.h"
+#include "spi_select.h"
+
 
 
 //added by Mark
@@ -60,16 +63,16 @@ volatile bool joystick_int = false;
 volatile static uint32_t counterA = 0; 
 volatile static uint32_t counterB = 0; 
 
-volatile bool missile_fired = false;
-volatile bool update_missile = false;
-volatile bool movePlanef = false; 
+volatile bool grade_fired = false;
+volatile bool update_grade = false;
+volatile bool move_Professor = false; 
 
 static left_right_t joystick_left_right;
 static up_down_t joystick_up_down;
-plane_t plane;
+professor_t professor;
 
-struct missle * m_head = NULL;
-struct missle * m_tail = NULL;
+struct grade * m_head = NULL;
+struct grade * m_tail = NULL;
 
 struct student * s_head = NULL;
 struct student * s_tail = NULL;
@@ -78,9 +81,18 @@ static uint16_t xpos = COLS/2;
 static uint16_t ypos = ROWS/2;  
 
 static uint16_t animate = 0; 
+bool grade = false; 
 
 char msg1[]= "ERIC SIMULATOR 2018"; 
 
+//ID's for wireless transmission
+uint8_t ID1[]      = { 3,5,3,2,5};
+uint8_t ID2[]      = { 3,5,3,2,6};
+
+
+bool TX_MODE = false; 
+
+	
 //FOR LCD TOUCHSCREEN
 //*****************************************************************************
 void DisableInterrupts(void)
@@ -99,7 +111,6 @@ void EnableInterrupts(void)
     CPSIE  I
   }
 }
-
 
 //*****************************************************************************
 
@@ -235,28 +246,28 @@ void initialize_hardware(void)
 		gpio_config_enable_output(GPIOF_BASE, PF2); 
 		gpio_config_alternate_function(GPIOF_BASE, PF2); 
 		gpio_config_port_control(GPIOF_BASE, GPIO_PCTL_PF2_M, GPIO_PCTL_PF2_T1CCP0); 
+		
+		//Initialize Nordic Wireless 
+		spi_select_init();
+		spi_select(NORDIC);
+		wireless_initialize();
 
 }
 
-
 //*****************************************************************************
-//MAIN//
+//SETUP GAME
+//Functions that need to only happen once. Not in main infinite loop. 
 //*****************************************************************************
-int 
-main(void)
-{
-	static uint32_t debounce_cnt=0;
-	struct missle* m_curr;
-	int i = 0;  
-	char msg[80];
+void setUpGame(){
 	uint16_t x = 0; 
 	uint16_t y = 0; 
+	uint16_t a = 0; 
+	uint16_t b = 0;  
 	
-	//Set up the linked list for missles
+	wireless_com_status_t status;
+  uint32_t data;
 	
-  initialize_hardware();
-
-  put_string("\n\r");
+	put_string("\n\r");
   put_string("************************************\n\r");
   put_string("ECE353 - Spring 2018 HW3\n\r  ");
   put_string(group);
@@ -274,8 +285,6 @@ main(void)
 		x_pos = ADC_SSFIFO0_DATA_M/2; 
 		y_pos = ADC_SSFIFO0_DATA_M/2; 
 		
-		
-		
 		//Initialize Start Screen
 
 		lcd_print_stringXY(msg1,1,5,LCD_COLOR_YELLOW,LCD_COLOR_BLACK);
@@ -284,7 +293,9 @@ main(void)
 		lcd_print_stringXY("--------------",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 
 		buzzer(true);  
-		//Temporary stop for testing
+	//*****************************************************************************
+	//Display Start Screen
+	//*****************************************************************************
 			 while( ( (COLS < ft6x06_read_x()) & (ROWS < ft6x06_read_y()))){
 
 				
@@ -303,88 +314,219 @@ main(void)
 				
 			}
 			buzzer(false);
-		
+
   	lcd_clear_screen(LCD_COLOR_BLACK);
-		
-	
-  // Reach infinite loop
-  while(1){
-		 
-		//Check if missile is fired
-		if (missile_fired){
-		   //add position
-			add_missle();
-			missile_fired = false;
-		}
-		
-		//Update missile position
-		if (update_missile){
-			//Update function
-			update_misslePos();
-			update_missile = false;
-		}
-		
-		//Update plane position
-		if (movePlanef){
-			movePlane(); 
-			//reset flag
-			movePlanef = false; 
-		}
-		
-		m_curr = m_head;
-		animate++;  
-		
-		if((animate % 500) < 250){
-		  lcd_draw_image(
-                  xpos,                 // X Pos
-                  PLANE_WIDTH,   // Image Horizontal Width
-                  ypos,                 // Y Pos
-                  PLANE_HEIGHT,  // Image Vertical Height
-                  planeBitmap,       // Image
-                  LCD_COLOR_BLUE2,      // Foreground Color
-                  LCD_COLOR_BLACK     // Background Color
-                ); 
-		} else{
-					  lcd_draw_image(
-                  xpos,                 // X Pos
-                  PLANE_WIDTH,   // Image Horizontal Width
-                  ypos,                 // Y Pos
-                  PLANE_HEIGHT,  // Image Vertical Height
-                  planeBitmap2,       // Image
-                  LCD_COLOR_BLUE2,      // Foreground Color
-                  LCD_COLOR_BLACK     // Background Color
-                ); 
-		}
-		while(m_curr!=NULL){
-		
-		if(m_curr->y_loc >= MISSLE_HEIGHT){		
-		lcd_draw_image(
-                  m_curr->x_loc,                 // X Pos
-                  MISSLE_WIDTH,   // Image Horizontal Width
-                  m_curr->y_loc,                 // Y Pos
-                  MISSLE_HEIGHT,  // Image Vertical Height
-                  missleBitmap,       // Image
-                  LCD_COLOR_YELLOW,      // Foreground Color
-                  LCD_COLOR_BLACK     // Background Color
-                ); 
-		}
+	//*****************************************************************************
+	//Choose Player 1 or Player 2
+	//*****************************************************************************		
+
+		lcd_print_stringXY("--------",7,1,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+		lcd_print_stringXY("Player 1",7,3,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+		lcd_print_stringXY("--------",7,5,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 			
-			if(m_curr->y_loc < MISSLE_HEIGHT){
-				lcd_draw_image(
-                  m_curr->x_loc,                 // X Pos
-                  MISSLE_WIDTH,   // Image Horizontal Width
-                  m_curr->y_loc,                 // Y Pos
-                  MISSLE_HEIGHT,  // Image Vertical Height
-                  missleErase,       // Image
-                  LCD_COLOR_BLACK,      // Foreground Color
-                  LCD_COLOR_BLACK     // Background Color
-                ); 
+		lcd_print_stringXY("Tap to choose player",1,9,LCD_COLOR_WHITE,LCD_COLOR_BLACK);	
+
+		lcd_print_stringXY("--------",7,14,LCD_COLOR_YELLOW,LCD_COLOR_BLACK);
+		lcd_print_stringXY("Player 2",7,16,LCD_COLOR_YELLOW,LCD_COLOR_BLACK);
+		lcd_print_stringXY("--------",7,18,LCD_COLOR_YELLOW,LCD_COLOR_BLACK);	
+			
+		while(1){
+
+				a = ft6x06_read_x(); 
+				b = ft6x06_read_y(); 
+			
+				if (a == x & b == y) {
+					
+				}
+				else {
+						y = ft6x06_read_y(); 
+					
+					
+					if (ft6x06_read_td_status() > 0) {
+					
+						printf("X=%d Y=%d\n\r",x,y);
+					}
+					else {
+						printf("NO EVENT\n\r");
+					}
+					if(y < ROWS/2){
+						//Select player 1
+						printf("SELECTED PLAYER 1\n\r");
+						wireless_configure_device(ID1, ID2 ) ;
+						TX_MODE = false; 
+						
+						break;
+					}
+					if(y > ROWS/2){
+						//Select player 2
+						printf("SELECTED PLAYER 2\n\r");
+						wireless_configure_device(ID2, ID1 ) ;
+						TX_MODE = true; 
+						player2Logic(); 
+						
+						break; 
+					}
 			}
-			m_curr = m_curr->nxt;
+		}
+	lcd_clear_screen(LCD_COLOR_BLACK);
+	//*****************************************************************************
+	//Set up wireless logic
+	//*****************************************************************************				
+/*
+	while(1){
+      if(TX_MODE)
+      {
+          printf("Sending: %d\n\r",1);
+          status = wireless_send_32(false, false, 1);
+          if(status != NRF24L01_TX_SUCCESS)
+          {
+            printf("Error Message: %s\n\r",wireless_error_messages[status]);
+          }
+      }
+      else if (!TX_MODE)
+      {
+        status =  wireless_get_32(false, &data);
+        if(status == NRF24L01_RX_SUCCESS)
+        {
+            printf("Received: %d\n\r", data);
+        }
+        
+      }
+	}			
+	*/
+}
+
+
+//*****************************************************************************
+//MAIN//
+//*****************************************************************************
+int 
+main(void)
+{
+	static uint32_t debounce_cnt=0;
+	struct grade* m_curr;
+	char msg[80];
+
+	
+	//Set up the linked list for grades
+	
+  initialize_hardware();
+
+	setUpGame(); 
+
+	// GAME WHILE LOOP BEGINS HERE
+  while(1){
+    m_curr = m_head;
+		animate++;  
+		if(!TX_MODE){
+			if((animate % 500) < 250){
+				lcd_draw_image(
+										xpos,                 // X Pos
+										PLANE_WIDTH,   // Image Horizontal Width
+										ypos,                 // Y Pos
+										PLANE_HEIGHT,  // Image Vertical Height
+										planeBitmap,       // Image
+										LCD_COLOR_BLUE2,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+			} else{
+							lcd_draw_image(
+										xpos,                 // X Pos
+										PLANE_WIDTH,   // Image Horizontal Width
+										ypos,                 // Y Pos
+										PLANE_HEIGHT,  // Image Vertical Height
+										planeBitmap2,       // Image
+										LCD_COLOR_BLUE2,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+			}
+			while(m_curr!=NULL){
+			
+			if(m_curr->y_loc >= grade_HEIGHT){		
+				if(grade){
+				//SHOOT A
+				lcd_draw_image(
+									m_curr->x_loc,                 // X Pos
+									grade_WIDTH,   // Image Horizontal Width
+									m_curr->y_loc,                 // Y Pos
+									grade_HEIGHT,  // Image Vertical Height
+									gradeBitmapA,       // Image
+									LCD_COLOR_GREEN,      // Foreground Color
+									LCD_COLOR_BLACK     // Background Color
+								); 
+					grade = false; 					
+				} else{
+				//SHOOT F
+				lcd_draw_image(
+										m_curr->x_loc,                 // X Pos
+										grade_WIDTH,   // Image Horizontal Width
+										m_curr->y_loc,                 // Y Pos
+										grade_HEIGHT,  // Image Vertical Height
+										gradeBitmapF,       // Image
+										LCD_COLOR_RED,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+					grade = true; 
+				}
+				
+			}
+				//ERASE
+				if(m_curr->y_loc < grade_HEIGHT){
+					lcd_draw_image(
+										m_curr->x_loc,                 // X Pos
+										grade_WIDTH,   // Image Horizontal Width
+										m_curr->y_loc,                 // Y Pos
+										grade_HEIGHT,  // Image Vertical Height
+										gradeErase,       // Image
+										LCD_COLOR_BLACK,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+				}
+				 		
+				
+				m_curr = m_curr->nxt;
+			}
+			//Player 1 Actions not in transfer mode
+			player1Logic();
+		}
+		else{
+			player2Logic();
 		}
 		
   }		// end of while(1) loop
 }
+//*****************************************************************************
+//Player 2 logic
+//*****************************************************************************				
+void player2Logic(){
+	
+}	
+//*****************************************************************************
+//Player 1 logic
+//The player one is the professor. He has a direction and shoots grade. Also 
+//has three lives on initialization.
+//*****************************************************************************				
+void player1Logic(){
+       //Update plane position
+		if (move_Professor){
+			moveProfessor(); 
+			move_Professor = false;  			//reset flag
+	  }
+
+		//Check if grade is fired
+		if (grade_fired){
+		   //add position
+			add_grade();
+			grade_fired = false;					//reset flag
+		}
+		
+		//Update grade position
+		if (update_grade){
+			//Update function
+			update_gradePos();
+			update_grade = false;					//reset flag
+		}
+}	
 //*****************************************************************************
 //Enable/Disable sound
 //*****************************************************************************
@@ -402,7 +544,7 @@ void buzzer(bool on){
 //*****************************************************************************
 //PLANE MOVEMENT
 //*****************************************************************************
-void movePlane(){
+void moveProfessor(){
 			//LEFT AND RIGHT
 		if(x_pos >= (ADC_SSFIFO0_DATA_M/4 * 3)){
 			joystick_left_right = RGHT; 
@@ -474,37 +616,37 @@ bool checkBoundY(uint16_t y){
 	}
 }
 //*****************************************************************************
-//MISSILES//
+//gradeS//
 //*****************************************************************************
-//Adds a new missile to the end of the linked list
-void add_missle(void){
-     struct missle* newMissle = malloc(sizeof(struct missle)); 
-     struct missle* curr;
+//Adds a new grade to the end of the linked list
+void add_grade(void){
+     struct grade* newgrade = malloc(sizeof(struct grade)); 
+     struct grade* curr;
 	
-     newMissle->x_loc = xpos; 
-     newMissle->y_loc = ypos - (PLANE_HEIGHT / 2); 
-     newMissle->nxt = NULL;
-    //This is the first missile
+     newgrade->x_loc = xpos; 
+     newgrade->y_loc = ypos - (PLANE_HEIGHT / 2); 
+     newgrade->nxt = NULL;
+    //This is the first grade
      if (m_head==NULL){
-        m_head = newMissle;
-        m_tail = newMissle;
+        m_head = newgrade;
+        m_tail = newgrade;
     }
         //Update all values
       else{
-				newMissle->nxt = m_head;
-				m_head = newMissle;
+				newgrade->nxt = m_head;
+				m_head = newgrade;
 			}
 }
 
-void update_misslePos(void){
-  struct missle* curr;
-  struct missle* rem;
+void update_gradePos(void){
+  struct grade* curr;
+  struct grade* rem;
   curr = m_head;
   while (curr!=NULL){
-		//Remove missile if too close
+		//Remove grade if too close
   if ((curr->y_loc+1)>ROWS){
     rem = curr;
-    remove_missle(rem);
+    remove_grade(rem);
   }
   else{
    curr->y_loc = curr->y_loc - 1;
@@ -513,11 +655,11 @@ void update_misslePos(void){
   }
 }
 
-//Will remove outdated missiles
-bool remove_missle(struct missle* del_missle){
-//Pass in missile, remove it
+//Will remove outdated grades
+bool remove_grade(struct grade* del_grade){
+//Pass in grade, remove it
     
-   struct missle* curr;
+   struct grade* curr;
    curr = m_head;
    
 	//For condition with just one node
@@ -525,7 +667,7 @@ bool remove_missle(struct missle* del_missle){
 		m_head = NULL;
 		m_tail = NULL;
 	}
- //Iterate through the loop looking for the missile
+ //Iterate through the loop looking for the grade
 	else{
   while(curr->nxt != m_tail){
      curr = curr->nxt;
@@ -549,7 +691,7 @@ void add_student(void){
      newStudent->x_loc = xpos; 
      newStudent->y_loc = ypos - (PLANE_HEIGHT / 2); 
      newStudent->nxt = NULL;
-    //This is the first missile
+    //This is the first grade
      if (m_head==NULL){
         s_head = newStudent;
         s_tail = newStudent;
@@ -561,12 +703,12 @@ void add_student(void){
 			}
 }
 
-void update_studnetPos(void){
+void update_studentPos(void){
   struct student* curr;
   struct student* rem;
   curr = s_head;
   while (curr!=NULL){
-		//Remove missile if too close
+		//Remove grade if too close
   if ((curr->y_loc+1)>ROWS){
     rem = curr;
     remove_student(rem);
@@ -578,9 +720,9 @@ void update_studnetPos(void){
   }
 }
 
-//Will remove outdated missiles
+//Will remove outdated grades
 bool remove_student(struct student* del_student){
-//Pass in missile, remove it
+//Pass in grade, remove it
     
    struct student* curr;
    curr = s_head;
@@ -590,7 +732,7 @@ bool remove_student(struct student* del_student){
 		m_head = NULL;
 		m_tail = NULL;
 	}
- //Iterate through the loop looking for the missile
+ //Iterate through the loop looking for the grade
 	else{
   while(curr->nxt != s_tail){
      curr = curr->nxt;
@@ -627,9 +769,9 @@ void ADC0SS2_Handler(void){
 
 void TIMER0A_Handler(void){
 	if (sw1_debounce_fsm()){
-		missile_fired = true;
+		grade_fired = true;
 	}
-	update_missile = true;
+	update_grade = true;
 	
 	if (counterA<20){
 		  lp_io_clear_pin(GREEN_BIT);
@@ -659,9 +801,11 @@ void TIMER0B_Handler(void){
 	//clear
 	clearTimer0B(TIMER0_BASE); 
 	kickoff(ADC0_BASE);
-	
+	if (!TX_MODE) {
+		move_Professor = true; 
+	}
 	//Set flag to move plane!
-	movePlanef = true;  
+	 
 	
 }
 
