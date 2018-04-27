@@ -79,7 +79,7 @@ bool checkBoundX(uint16_t x);
 bool checkBoundY(uint16_t x);
 
 void moveProfessor(); 
-void buzzer(bool on);
+void buzzer(bool on, bool tone);
 void player2Logic(void);
 void player1Logic(void);
 

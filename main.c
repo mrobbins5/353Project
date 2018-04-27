@@ -289,7 +289,7 @@ void setUpGame(){
 		lcd_print_stringXY("--------------",3,11,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 		lcd_print_stringXY("--------------",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 
-		buzzer(true);  
+		buzzer(true, false);  
 	//*****************************************************************************
 	//Display Start Screen
 	//*****************************************************************************
@@ -310,7 +310,7 @@ void setUpGame(){
 				}
 				
 			}
-			buzzer(false);
+		buzzer(true, true);
 
   	lcd_clear_screen(LCD_COLOR_BLACK);
 	//*****************************************************************************
@@ -351,7 +351,7 @@ void setUpGame(){
 						printf("SELECTED PLAYER 1\n\r");
 						wireless_configure_device(ID1, ID2 ) ;
 						TX_MODE = false; 
-						
+						buzzer(false, false);
 						break;
 					}
 					if(y > ROWS/2){
@@ -359,7 +359,7 @@ void setUpGame(){
 						printf("SELECTED PLAYER 2\n\r");
 						wireless_configure_device(ID2, ID1 ) ;
 						TX_MODE = true; 
-						
+						buzzer(false, false);
 						break; 
 					}
 			}
@@ -536,8 +536,6 @@ void player2Logic(){
 
 void player1Logic(){
 
-
-	
        //Update plane position
 		if (move_Professor){
 			moveProfessor(); 
@@ -580,17 +578,20 @@ void player1Logic(){
 //*****************************************************************************
 //Enable/Disable sound
 //*****************************************************************************
-void buzzer(bool on){
+void buzzer(bool on, bool tone){
+	
 	
 	//Turn the buzzer on 
 	if(on){
-		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 5000);
+		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 55555555, tone);
 	}
 	else{
-		gp_timer_config_16PWM(TIMER1_BASE, ~TIMER_TAMR_TAMR_PERIOD, false, false, 55555);
+		gp_timer_config_16PWM(TIMER1_BASE, ~TIMER_TAMR_TAMR_PERIOD, false, false, 55555555, tone);
 	}
+	
+	
+	
 }
-
 //*****************************************************************************
 //PLANE MOVEMENT
 //*****************************************************************************
