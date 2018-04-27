@@ -71,7 +71,7 @@ void add_grade(void);
 bool remove_grade(struct grade* del_grade);
 void update_gradePos(void);
 
-void add_student(void);
+void add_student(uint16_t xstart, uint16_t ystart);
 bool remove_student(struct student* del_student);
 void update_studentPos(void);
 

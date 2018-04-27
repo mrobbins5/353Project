@@ -86,8 +86,8 @@ bool grade = false;
 char msg1[]= "ERIC SIMULATOR 2018"; 
 
 //ID's for wireless transmission
-uint8_t ID1[]      = { 3,5,3,2,5};
-uint8_t ID2[]      = { 3,5,3,2,6};
+uint8_t ID1[]      = { 3,6,3,2,5};
+uint8_t ID2[]      = { 3,5,4,2,6};
 
 
 bool TX_MODE = false; 
@@ -264,9 +264,6 @@ void setUpGame(){
 	uint16_t a = 0; 
 	uint16_t b = 0;  
 	
-	wireless_com_status_t status;
-  uint32_t data;
-	
 	put_string("\n\r");
   put_string("************************************\n\r");
   put_string("ECE353 - Spring 2018 HW3\n\r  ");
@@ -362,7 +359,6 @@ void setUpGame(){
 						printf("SELECTED PLAYER 2\n\r");
 						wireless_configure_device(ID2, ID1 ) ;
 						TX_MODE = true; 
-						player2Logic(); 
 						
 						break; 
 					}
@@ -495,18 +491,53 @@ main(void)
 		
   }		// end of while(1) loop
 }
+
+bool messageIndicator = true; 
 //*****************************************************************************
 //Player 2 logic
 //*****************************************************************************				
 void player2Logic(){
 	
+	wireless_com_status_t status;
+  uint32_t data;
+	
+	//for testing purposes
+	data = 0x50; 
+	
+
+	
+	if(sw1_debounce_fsm()){
+			if (messageIndicator){
+				data |= 0x1; 
+				messageIndicator = false; 
+			} 
+			else{
+				data &= 0xFE; 
+				messageIndicator = true; 
+			}
+			
+		printf("Sending: %d\n\r",data);
+		status = wireless_send_32(false, false, data);
+	}
 }	
 //*****************************************************************************
 //Player 1 logic
 //The player one is the professor. He has a direction and shoots grade. Also 
 //has three lives on initialization.
-//*****************************************************************************				
+//*****************************************************************************	
+	wireless_com_status_t status;
+	wireless_com_status_t prev_status = NRF24L01_ERR;
+  uint32_t data;
+	uint16_t x;
+	uint16_t y; 
+	uint16_t prev_bit1 = 0;
+	uint16_t bit1; 
+
+
 void player1Logic(){
+
+
+	
        //Update plane position
 		if (move_Professor){
 			moveProfessor(); 
@@ -526,6 +557,25 @@ void player1Logic(){
 			update_gradePos();
 			update_grade = false;					//reset flag
 		}
+		//Check for player 2 spawning students
+		status =  wireless_get_32(false, &data);
+		
+		x = data >> 16;
+		y = data & 0x0F; 
+		bit1 = x & 0x1; //Gets the first bit of 1
+		printf("Checking for data recieved n\r");
+		if ( status == NRF24L01_RX_SUCCESS){  //x&=1 checks if it's a new message
+			printf("Before checking bit1 n\r");
+			if(((prev_bit1 == 0x1) & ((bit1) == 0)) | ((prev_bit1 == 0x0) & ((bit1) == 0))){
+				printf("Received: %d\n\r", data);
+				//TODO: add position below based on data
+				prev_bit1 = (x &= 1); 
+			
+				add_student(x, y); 
+				prev_status = status; 
+			}
+
+		}
 }	
 //*****************************************************************************
 //Enable/Disable sound
@@ -534,7 +584,7 @@ void buzzer(bool on){
 	
 	//Turn the buzzer on 
 	if(on){
-		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 500);
+		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 5000);
 	}
 	else{
 		gp_timer_config_16PWM(TIMER1_BASE, ~TIMER_TAMR_TAMR_PERIOD, false, false, 55555);
@@ -684,14 +734,14 @@ return true;
 //STUDENTS//
 //*****************************************************************************
 //Adds a new student to the end of the linked list
-void add_student(void){
+void add_student(uint16_t xstart, uint16_t ystart){
      struct student* newStudent = malloc(sizeof(struct student)); 
      struct student* curr;
 	
-     newStudent->x_loc = xpos; 
-     newStudent->y_loc = ypos - (PLANE_HEIGHT / 2); 
+     newStudent->x_loc = xstart; 
+     newStudent->y_loc = ystart;  
      newStudent->nxt = NULL;
-    //This is the first grade
+    //This is the first student
      if (m_head==NULL){
         s_head = newStudent;
         s_tail = newStudent;
