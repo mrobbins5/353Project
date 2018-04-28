@@ -1736,75 +1736,76 @@ void lcd_print_character(
 	uint16_t bg_color,
 	char character)
 {
+	uint16_t i, j,m,temp, reverse, result, k, bits_right, bits_left,remaining_bits ;
+	//Convert the passed character into ASCII
+	uint8_t ascii_value = (uint8_t) character;
+	//Starting value
+	uint16_t starting = (ascii_value-32)*FONT_HEIGHT*2; 
+  //Set the drawing area for the character
+	lcd_set_pos(X_pixel, X_pixel + FONT_WIDTH-1,Y_pixel, Y_pixel+FONT_HEIGHT-1);
+	//Since we utilize only the 3 most significant bits in the last byte
+  bits_right = FONT_HEIGHT - FONT_WIDTH;  //Value of 5 
 	
-	
-
-	// This is what we're working with vvv
-	//const uint8_t courierNewBitmap[] = 
-	//Fonts 11 bits wide
-	//3 bits of 2nd byte in a row are never used
-	int index; 
-	int i, j; 
-	int write_or_not;
-	int BytesPerRow = 2; //FONT_WIDTH/4; 
-	uint8_t two_byte; 
-
-	//Set the square of the character
-	lcd_set_pos(X_pixel,X_pixel+FONT_WIDTH-1,Y_pixel,Y_pixel+FONT_HEIGHT-1);
-	
-	//Get bottom right index of character
-	index = (character - ' ')*(FONT_HEIGHT*BytesPerRow) + (FONT_HEIGHT*BytesPerRow - 1);
-	
-	//Get bottom right byte
-	two_byte = courierNewBitmap[index]; 
-	
-	//Loop through every pixel of the slice
-	for(i = 0; i < FONT_HEIGHT; i++){
-		
-		//Ignore first 5 pixels
-		for(j = 0; j < 5; j++){
-			two_byte = two_byte >> 1; 
-		}
-		
-		//Do 3 leftover pixels from the first chunk
-		for(j = 0; j < 3; j++){
-			
-			if((two_byte >> j) & (0x01)){
-				
-				//Foreground Color
-				lcd_write_data_u16(fg_color);
-			}
-			else{
-				
-				//Background Color
-				lcd_write_data_u16(bg_color); 
-			}
-		}
-		
-		//Go to second part of row
-		index = index - 1; 
-		two_byte = courierNewBitmap[index]; 
-		
-		//Handle 8 bits
-		for(j = 0; j < 8; j++){
-			if((two_byte >> j) & (0x01)){
-				
-				//Foreground Color
-				lcd_write_data_u16(fg_color);
-			}
-			else{
-				
-				//Background Color
-				lcd_write_data_u16(bg_color); 
-			}
-		}
-		
-		// go up to next column
-		index = index - 1; 
-		two_byte = courierNewBitmap[index]; 
+	for (i = starting+FONT_HEIGHT*2-2; i > starting; i=i-2)
+  {
+		    j = 2;
+        while (j > 0)
+        {
+					if (j==2){
+						//Only need the first three bits out of this value 
+						result = courierNewBitmap[i+j-1];
+						result = result>>bits_right;
+						//The bits needed to be worked on
+						remaining_bits = 8 - bits_right;
+						//Reverse the remaining three bits
+						reverse = 0;
+						for (m = 0; m < remaining_bits; m++)
+            {
+               temp = (result & (1 << m));
+               if(temp)
+                 reverse |= (1 << ((remaining_bits-1) - m));
+            }
+						//Write only the three remaining bits to LCD
+            for (k = 0; k < remaining_bits; k++){						
+						   if (reverse & 0x04)
+               {
+                 lcd_write_data_u16(fg_color);
+               }
+               else
+               {
+                 lcd_write_data_u16(bg_color);
+               }
+							 reverse = reverse<<1;
+						}
+						j--;
+					}
+					else if (j==1){
+						//The entire byte is used
+						result = courierNewBitmap[i];
+						reverse = 0;
+						//Reverse these 8 bits
+						for (m = 0; m < 8; m++)
+            {
+               temp = (result & (1 << m));
+               if(temp)
+                 reverse |= (1 << ((7) - m));
+            }
+						//Write the entire 8 bits of this value
+						for (k = 0; k < 8; k++){						
+						   if (reverse & 0x80)
+               {
+                 lcd_write_data_u16(fg_color);
+               }
+               else
+               {
+                 lcd_write_data_u16(bg_color);
+               }
+							 reverse = reverse<<1;
+						}
+						j--;
+					}
+				}
 	}
-
-	
 }
 
 /**********************************************************
@@ -1832,73 +1833,37 @@ void lcd_print_stringXY(
 		int8_t Y,
     uint16_t fg_color, 
     uint16_t bg_color
-		
 )
 {
-	uint8_t current_char;
-	uint8_t next_char; 
-	
-	uint16_t newX = X; 
-	uint16_t newY = Y; 
-	int i; 
-	
-	//Get X into Character Position Pixel
-	newX = X_PADDING + newX*FONT_WIDTH; 
-	newY = newY*FONT_HEIGHT; 
-	
-	//get character from msg
-	for(i = 0; i < strlen(msg); i++){
-		
-		//Get the current character
-		current_char = msg[i]; 
-		
-		//PRINT
-		lcd_print_character( newX, newY, fg_color, bg_color, current_char); 
-		
-		//Move to next character location
-		newX = newX + FONT_WIDTH; 
-		
-		//Check for wrap around
-		if( newX > CHAR_COLUMNS*FONT_WIDTH - 1){
-			
-			//check if next char is space
-			next_char = msg[i+1]; 
-			
-			//if so, skip past it
-			if(next_char == ' '){
-				i++; 
-			}
-			
-			//Go down one row
-			newY = newY + FONT_HEIGHT; 
-			
-			//Wrap X back to beginning
-			newX = X*FONT_WIDTH + X_PADDING; 
-			
-			//Wrap to top of screen if you go past the bottom right
-			if( newY > CHAR_ROWS*FONT_HEIGHT - 1){
-				newY = CHAR_ROWS - FONT_HEIGHT - 1; 
-			}
-			
-		}
-		
+	//i is to loop through the string, x_pixel & y_pixel indicate the location of the pixel,
+	//the orig_X is for the actual position, flag is a variable used to indicate a move to a 
+  //new line, c is the character	
+	uint16_t i, x_pixel, y_pixel, orig_X;
+	uint8_t flag = 0;
+	char c;
+	//Save the values of the Xposition
+	orig_X = X;
+	//Loop through to get the characters out one by one
+	for (i = 0; i < strlen(msg); i++){
+	   c = msg[i];
+		 //Padding added
+		 x_pixel = X*FONT_WIDTH + X_PADDING;
+		 y_pixel = Y*FONT_HEIGHT;
+		 if (!(flag == 1 && c == ' ')) {
+			 lcd_print_character(x_pixel,y_pixel,fg_color,bg_color, c);
+			 //After printing out a character, move ahead by one column
+			 X = X + 1; 
+		 }
+		 //Flag cleared
+		 flag = 0;
+		 if (X==CHAR_COLUMNS){
+		   //Move to next row, and Column X
+			 X = orig_X;
+			 Y = Y + 1;
+			 //Flag set to indicate new line
+			 flag = 1;
+			 //wrap around condition
+			 if (Y > CHAR_ROWS-1) Y = 0;
+		 }
 	}
-	
-	
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

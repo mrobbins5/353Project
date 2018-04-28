@@ -32,7 +32,8 @@
 #include "launchpad_io.h"
 #include "wireless.h"
 #include "spi_select.h"
-
+#include "quadraturedial.h"
+#include <math.h>
 
 
 //added by Mark
@@ -58,6 +59,14 @@ volatile static uint16_t x_pos;
 volatile static uint16_t y_pos; 
 
 
+//Get the direction
+volatile static double xdir;
+volatile static double ydir;
+volatile static double angle1;
+volatile static double angle;
+
+volatile static uint16_t rotation; 
+
 volatile bool debounce_int = false;
 volatile bool joystick_int = false;
 volatile static uint32_t counterA = 0; 
@@ -66,6 +75,7 @@ volatile static uint32_t counterB = 0;
 volatile bool grade_fired = false;
 volatile bool update_grade = false;
 volatile bool move_Professor = false; 
+volatile bool direction_Professor = false; 
 
 static left_right_t joystick_left_right;
 static up_down_t joystick_up_down;
@@ -81,7 +91,6 @@ static uint16_t xpos = COLS/2;
 static uint16_t ypos = ROWS/2;  
 
 static uint16_t animate = 0; 
-bool grade = false; 
 
 char msg1[]= "ERIC SIMULATOR 2018"; 
 
@@ -239,7 +248,7 @@ void initialize_hardware(void)
 //  init_serial_debug(true, true);
     ft6x06_init();
 //  EnableInterrupts();
-
+    initialize_dial();
 		//PWM kickoff
 		gpio_enable_port(GPIOF_BASE); 
 		gpio_config_digital_enable(GPIOF_BASE, PF2); 
@@ -289,7 +298,7 @@ void setUpGame(){
 		lcd_print_stringXY("--------------",3,11,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 		lcd_print_stringXY("--------------",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
 
-		buzzer(true, false);  
+		buzzer(true);  
 	//*****************************************************************************
 	//Display Start Screen
 	//*****************************************************************************
@@ -303,14 +312,14 @@ void setUpGame(){
 				y = ft6x06_read_y(); 
 				if (ft6x06_read_td_status() > 0) {
 				
-					printf("X=%d Y=%d\n\r",x,y);
+					//printf("X=%d Y=%d\n\r",x,y);
 				}
 				else {
-					printf("NO EVENT\n\r");
+					//printf("NO EVENT\n\r");
 				}
 				
 			}
-		buzzer(true, true);
+			buzzer(false);
 
   	lcd_clear_screen(LCD_COLOR_BLACK);
 	//*****************************************************************************
@@ -341,55 +350,31 @@ void setUpGame(){
 					
 					if (ft6x06_read_td_status() > 0) {
 					
-						printf("X=%d Y=%d\n\r",x,y);
+						//printf("X=%d Y=%d\n\r",x,y);
 					}
 					else {
-						printf("NO EVENT\n\r");
+						//printf("NO EVENT\n\r");
 					}
 					if(y < ROWS/2){
 						//Select player 1
-						printf("SELECTED PLAYER 1\n\r");
+						//printf("SELECTED PLAYER 1\n\r");
 						wireless_configure_device(ID1, ID2 ) ;
 						TX_MODE = false; 
-						buzzer(false, false);
+						
 						break;
 					}
 					if(y > ROWS/2){
 						//Select player 2
-						printf("SELECTED PLAYER 2\n\r");
+						//printf("SELECTED PLAYER 2\n\r");
 						wireless_configure_device(ID2, ID1 ) ;
 						TX_MODE = true; 
-						buzzer(false, false);
+						
 						break; 
 					}
 			}
 		}
-	lcd_clear_screen(LCD_COLOR_BLACK);
-	//*****************************************************************************
-	//Set up wireless logic
-	//*****************************************************************************				
-/*
-	while(1){
-      if(TX_MODE)
-      {
-          printf("Sending: %d\n\r",1);
-          status = wireless_send_32(false, false, 1);
-          if(status != NRF24L01_TX_SUCCESS)
-          {
-            printf("Error Message: %s\n\r",wireless_error_messages[status]);
-          }
-      }
-      else if (!TX_MODE)
-      {
-        status =  wireless_get_32(false, &data);
-        if(status == NRF24L01_RX_SUCCESS)
-        {
-            printf("Received: %d\n\r", data);
-        }
-        
-      }
-	}			
-	*/
+	lcd_clear_screen(LCD_COLOR_BLACK);			
+
 }
 
 
@@ -415,6 +400,21 @@ main(void)
     m_curr = m_head;
 		animate++;  
 		if(!TX_MODE){
+			
+					 lcd_draw_image(
+										xdir + xpos,                 // X Pos
+										pointer_WIDTH,   // Image Horizontal Width
+										ydir + ypos,                 // Y Pos
+										pointer_HEIGHT,  // Image Vertical Height
+										triangleBitmap,       // Image
+										LCD_COLOR_BLUE2,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+			
+		
+
+
+		 
 			if((animate % 500) < 250){
 				lcd_draw_image(
 										xpos,                 // X Pos
@@ -425,6 +425,7 @@ main(void)
 										LCD_COLOR_BLUE2,      // Foreground Color
 										LCD_COLOR_BLACK     // Background Color
 									); 
+
 			} else{
 							lcd_draw_image(
 										xpos,                 // X Pos
@@ -435,12 +436,31 @@ main(void)
 										LCD_COLOR_BLUE2,      // Foreground Color
 										LCD_COLOR_BLACK     // Background Color
 									); 
+					
+		
 			}
+			
+					 lcd_draw_image(
+										xdir + xpos,                 // X Pos
+										pointer_WIDTH,   // Image Horizontal Width
+										ydir + ypos,                 // Y Pos
+										pointer_HEIGHT,  // Image Vertical Height
+										triangleClear,       // Image
+										LCD_COLOR_BLUE2,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+		
+			
+
 			while(m_curr!=NULL){
 			
-			if(m_curr->y_loc >= grade_HEIGHT){		
-				if(grade){
+				//Only draw if grade is alive
+			if((m_curr->y_loc >= grade_HEIGHT) & (m_curr->alive == true)){		
+				if(m_curr->A == true){		//strncmp
 				//SHOOT A
+				//printf(" Actual value of Xdir=%f Ydir=%f\n\r",xdir,ydir);
+				//printf("xpos=%i ypos=%i\n\r",xpos,ypos);
+				//printf("Cast value of Xdir=%i Ydir=%i\n\r",(uint16_t)xdir,(uint16_t)ydir);
 				lcd_draw_image(
 									m_curr->x_loc,                 // X Pos
 									grade_WIDTH,   // Image Horizontal Width
@@ -450,7 +470,7 @@ main(void)
 									LCD_COLOR_GREEN,      // Foreground Color
 									LCD_COLOR_BLACK     // Background Color
 								); 
-					grade = false; 					
+						
 				} else{
 				//SHOOT F
 				lcd_draw_image(
@@ -462,22 +482,22 @@ main(void)
 										LCD_COLOR_RED,      // Foreground Color
 										LCD_COLOR_BLACK     // Background Color
 									); 
-					grade = true; 
+
 				}
-				
+				printf("angle=%f currangle=%fsin=%f cos=%f\n\r", angle1, m_curr->angle, sin(m_curr->angle),cos(m_curr->angle));
 			}
-				//ERASE
-				if(m_curr->y_loc < grade_HEIGHT){
-					lcd_draw_image(
+			//Else if it is not 
+			else {
+									lcd_draw_image(
 										m_curr->x_loc,                 // X Pos
-										grade_WIDTH,   // Image Horizontal Width
+										grade_ERASE_WIDTH,   // Image Horizontal Width
 										m_curr->y_loc,                 // Y Pos
 										grade_HEIGHT,  // Image Vertical Height
 										gradeErase,       // Image
 										LCD_COLOR_BLACK,      // Foreground Color
 										LCD_COLOR_BLACK     // Background Color
 									); 
-				}
+			}
 				 		
 				
 				m_curr = m_curr->nxt;
@@ -489,6 +509,7 @@ main(void)
 			player2Logic();
 		}
 		
+							
   }		// end of while(1) loop
 }
 
@@ -516,7 +537,7 @@ void player2Logic(){
 				messageIndicator = true; 
 			}
 			
-		printf("Sending: %d\n\r",data);
+		//printf("Sending: %d\n\r",data);
 		status = wireless_send_32(false, false, data);
 	}
 }	
@@ -535,17 +556,20 @@ void player2Logic(){
 
 
 void player1Logic(){
-
-       //Update plane position
+    //Update plane position
 		if (move_Professor){
 			moveProfessor(); 
 			move_Professor = false;  			//reset flag
 	  }
-
+    //Change if the direction to be hit has to be changed
+		if (direction_Professor){
+			directionProfessor(); 
+			direction_Professor = false;  			//reset flag
+	  }
 		//Check if grade is fired
 		if (grade_fired){
 		   //add position
-			add_grade();
+			add_grade(true);						//Make the grade an A
 			grade_fired = false;					//reset flag
 		}
 		
@@ -561,37 +585,33 @@ void player1Logic(){
 		x = data >> 16;
 		y = data & 0x0F; 
 		bit1 = x & 0x1; //Gets the first bit of 1
-		printf("Checking for data recieved n\r");
+		//printf("Checking for data recieved n\r");
 		if ( status == NRF24L01_RX_SUCCESS){  //x&=1 checks if it's a new message
-			printf("Before checking bit1 n\r");
+			//printf("Before checking bit1 n\r");
 			if(((prev_bit1 == 0x1) & ((bit1) == 0)) | ((prev_bit1 == 0x0) & ((bit1) == 0))){
-				printf("Received: %d\n\r", data);
+				//printf("Received: %d\n\r", data);
 				//TODO: add position below based on data
 				prev_bit1 = (x &= 1); 
 			
 				add_student(x, y); 
 				prev_status = status; 
 			}
-
-		}
+   }
 }	
 //*****************************************************************************
 //Enable/Disable sound
 //*****************************************************************************
-void buzzer(bool on, bool tone){
-	
+void buzzer(bool on){
 	
 	//Turn the buzzer on 
 	if(on){
-		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 55555555, tone);
+		gp_timer_config_16PWM(TIMER1_BASE, TIMER_TAMR_TAMR_PERIOD, false, false, 5000);
 	}
 	else{
-		gp_timer_config_16PWM(TIMER1_BASE, ~TIMER_TAMR_TAMR_PERIOD, false, false, 55555555, tone);
+		gp_timer_config_16PWM(TIMER1_BASE, ~TIMER_TAMR_TAMR_PERIOD, false, false, 55555);
 	}
-	
-	
-	
 }
+
 //*****************************************************************************
 //PLANE MOVEMENT
 //*****************************************************************************
@@ -638,6 +658,22 @@ void moveProfessor(){
 			joystick_up_down = IDLE_ud; 
 		}
 }
+
+
+//*****************************************************************************
+//DIRECTION MOVEMENT
+//*****************************************************************************
+void directionProfessor(){
+		angle = (rotation*2*PI)/(96) - PI/2;
+	 angle1 = (rotation*360)/(96)-90;  
+	xdir = PLANE_HEIGHT * cos(angle)/2 ;
+	  ydir = PLANE_HEIGHT * sin(angle)/2 ;
+	  //printf("Xdir=%f Ydir=%f\n\r",xdir,ydir);
+	 //printf("angle=%f\n\r",angle1);
+}
+
+
+
 //*****************************************************************************
 //BOUNDARIES//
 //*****************************************************************************
@@ -670,13 +706,51 @@ bool checkBoundY(uint16_t y){
 //gradeS//
 //*****************************************************************************
 //Adds a new grade to the end of the linked list
-void add_grade(void){
+void add_grade(bool A){
      struct grade* newgrade = malloc(sizeof(struct grade)); 
      struct grade* curr;
-	
-     newgrade->x_loc = xpos; 
-     newgrade->y_loc = ypos - (PLANE_HEIGHT / 2); 
+	   newgrade->angle = angle;
+     newgrade->x_loc = xpos + (int16_t)xdir; 
+     newgrade->y_loc = ypos +(int16_t)ydir - (PLANE_HEIGHT / 2); 
      newgrade->nxt = NULL;
+		 newgrade->A = A; //Set the grade to be A or F
+		 newgrade->alive = true; 
+	
+	  //On the basis of the direction decide which way the grade should go
+	  //1st quadrant
+	  if (angle1==0){
+			  newgrade->dirn = 0;
+		}
+	  else if ((angle1>0) && (angle1<90)){
+			  newgrade->dirn = 1;
+		}
+		//At 90 degrees
+		else if (angle1 == 90){
+			  newgrade->dirn = 2;
+		}
+		//second quad
+		else if ((angle1>90) && (angle1<180)){
+			  newgrade->dirn = 3;
+		}
+		else if (angle1 == 180){
+			  newgrade->dirn = 4;
+		}
+		else if ((angle1>180) && (angle1<270)){
+			  newgrade->dirn = 5;
+		}
+		else if (angle1 == 270){
+			  newgrade->dirn = 6;
+		}
+		else if ((angle1>270) && (angle1<360)){
+			  newgrade->dirn = 7;
+		}
+		else if (angle1 == 360){
+			  newgrade->dirn = 0;
+		}
+		else{
+			//trial remove this one later
+			newgrade->dirn = 9;
+		}
     //This is the first grade
      if (m_head==NULL){
         m_head = newgrade;
@@ -694,13 +768,80 @@ void update_gradePos(void){
   struct grade* rem;
   curr = m_head;
   while (curr!=NULL){
-		//Remove grade if too close
-  if ((curr->y_loc+1)>ROWS){
+		//Remove grade if too close TOP 
+  if ((curr->y_loc+1) > ROWS - grade_HEIGHT){
+		curr->alive = false; 
+    rem = curr;
+    remove_grade(rem);
+  }
+	//BOTTOM
+	else if ((curr->y_loc+1) < grade_HEIGHT + 1){
+		curr->alive = false;
+    rem = curr;
+    remove_grade(rem);
+  }
+	//LEFT
+	else if ((curr->x_loc+1) > COLS - grade_WIDTH){
+		curr->alive = false;
+    rem = curr;
+    remove_grade(rem);
+  }
+	//RIGHT
+	else if ((curr->x_loc+1) < grade_WIDTH + 1){
+		curr->alive = false;
     rem = curr;
     remove_grade(rem);
   }
   else{
-   curr->y_loc = curr->y_loc - 1;
+	  //On the basis of the direction decide which way the grade should go
+	  //1st quadrant
+	  /*if (curr->dirn==0){
+			   //curr->x_loc = curr->x_loc - 1;
+			   curr->y_loc = curr->y_loc - sin(curr->angle);
+		}
+	  else if (curr->dirn==1){
+			  curr->x_loc = curr->x_loc + cos(curr->angle);
+			  curr->y_loc = curr->y_loc - sin(curr->angle);
+		}
+		//At 90 degrees
+		else if (curr->dirn==2){
+			  curr->x_loc = curr->x_loc + cos(curr->angle);
+			  //curr->y_loc = curr->y_loc - 1;
+		}
+		//second quad
+		else if (curr->dirn == 3){
+			  curr->x_loc = curr->x_loc + cos(curr->angle);
+			  curr->y_loc = curr->y_loc + sin(curr->angle);
+		}
+		else if (curr->dirn == 4){
+			  //curr->x_loc = curr->x_loc - 1;
+			  curr->y_loc = curr->y_loc + sin(curr->angle);
+		}
+		else if (curr->dirn == 5){
+			  curr->x_loc = curr->x_loc - cos(curr->angle);
+			  curr->y_loc = curr->y_loc + sin(curr->angle);
+		}
+		else if (curr->dirn ==6){
+			  curr->x_loc = curr->x_loc - cos(curr->angle);
+			  //curr->y_loc = curr->y_loc + 1;
+		}
+		else if (curr->dirn == 7){
+			  curr->x_loc = curr->x_loc - cos(curr->angle);
+			  curr->y_loc = curr->y_loc - sin(curr->angle);
+		}*/
+						//ERASE before updating position
+					lcd_draw_image(
+										curr->x_loc,                 // X Pos
+										grade_ERASE_WIDTH,   // Image Horizontal Width
+										curr->y_loc,                 // Y Pos
+										grade_HEIGHT,  // Image Vertical Height
+										gradeErase,       // Image
+										LCD_COLOR_BLACK,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+		
+		  curr->x_loc = curr->x_loc + cos(curr->angle);
+			curr->y_loc = curr->y_loc + sin(curr->angle);
   }
   curr = curr->nxt;
   }
@@ -712,7 +853,7 @@ bool remove_grade(struct grade* del_grade){
     
    struct grade* curr;
    curr = m_head;
-   
+	
 	//For condition with just one node
 	if (m_head == m_tail){
 		m_head = NULL;
@@ -727,6 +868,7 @@ bool remove_grade(struct grade* del_grade){
 //	free(curr->nxt);
 	curr->nxt = NULL;
 	m_tail = curr;
+	
 }
 return true;
 }
@@ -854,9 +996,11 @@ void TIMER0B_Handler(void){
 	kickoff(ADC0_BASE);
 	if (!TX_MODE) {
 		move_Professor = true; 
+		direction_Professor = true;
+		rotation = quadraturedial_getpos();
+		//printf("rot=%i\n\r",rotation);
 	}
 	//Set flag to move plane!
 	 
 	
 }
-

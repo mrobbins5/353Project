@@ -150,18 +150,65 @@ const uint8_t gradeBitmapF[] =
 
 const uint8_t gradeErase[] =
 {
-	0x00, // 
-	0x00, //
-	0x00, //  
-	0x00, // 
-	0x00, // 
-	0x00, //  
-	0x00, // 
-	0x00, //
-	0x00, //
-	0x00, //  
-	0x00, //            
+	0x0000, // 
+	0x0000, //
+	0x0000, //  
+	0x0000, // 
+	0x0000, // 
+	0x0000, //  
+	0x0000, // 
+	0x0000, //
+	0x0000, //
+	0x0000, //  
+	0x0000, //            
 };
+
+const uint8_t triangleBitmap[] =
+{
+	/*// @0 '?' (7 pixels wide)
+	
+	0x00, //
+	0x00, //     
+	0x00, //    
+	0x00, //   
+	0x3C, //   
+	0x3C, //
+	0x3C, //  
+	0x00, //  
+	0x00, // 
+	0x00, // 
+	0x00, //*/
+	// @0 '?' (7 pixels wide)
+	0x00, //
+	0x10, //    #   
+	0x10, //    #   
+	0x28, //   # #  
+	0x28, //   # #  
+	0x44, //  #   # 
+	0x44, //  #   # 
+	0x44, //  #   # 
+	0x82, // #     #
+	0xFE, // #######
+	0x00, //
+
+};
+
+const uint8_t triangleClear[] =
+{
+	// @0 '?' (7 pixels wide)
+	0x00, //
+	0x00, //     
+	0x00, //    
+	0x00, //   
+	0x00, //   
+	0x00, //
+	0x00, //  
+	0x00, //  
+	0x00, // 
+	0x00, // 
+	0x00, //
+};
+
 
 
 // 
@@ -391,10 +438,4 @@ const FONT_INFO microsoftSansSerif_8ptFontInfo =
 	microsoftSansSerif_8ptDescriptors, //  Character descriptor array
 	microsoftSansSerif_8ptBitmaps, //  Character bitmap array
 };
-
-
-
-
-
-
 

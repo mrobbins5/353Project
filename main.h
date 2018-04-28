@@ -34,7 +34,7 @@
 
 #define SYSTICK_LOAD_VALA 5000
 #define SYSTICK_LOAD_VALB 2500
-
+#define PI                3.1415926
 
 extern void initialize_serial_debug(void);
 
@@ -48,13 +48,17 @@ typedef struct {
 	uint16_t x_loc;
 	uint16_t y_loc;
 	uint16_t livesLeft;
-	uint16_t direction;
+	uint16_t xdirection;
+	uint16_t ydirection;
 } professor_t;
 
 struct grade {
-	uint16_t x_loc;
-	uint16_t y_loc;
-	char* color;
+	double x_loc;
+	double y_loc;
+	uint8_t  dirn;
+	double angle;
+	bool A; 
+	bool alive; 
 	struct grade *nxt;
 };
 
@@ -67,7 +71,7 @@ struct student {
 //////////////////////////////
 // Function Prototype Next //
 ////////////////////////////
-void add_grade(void);
+void add_grade(bool A);
 bool remove_grade(struct grade* del_grade);
 void update_gradePos(void);
 
@@ -79,7 +83,8 @@ bool checkBoundX(uint16_t x);
 bool checkBoundY(uint16_t x);
 
 void moveProfessor(); 
-void buzzer(bool on, bool tone);
+void directionProfessor();
+void buzzer(bool on);
 void player2Logic(void);
 void player1Logic(void);
 

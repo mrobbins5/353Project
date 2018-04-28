@@ -10,6 +10,11 @@
 #define				grade_HEIGHT	11	// height of grade image in pixels
 #define				grade_WIDTH		8		// width of grade image in pixels
 
+#define				grade_ERASE_HEIGHT	11	// height of grade image in pixels
+#define				grade_ERASE_WIDTH		16		// width of grade image in pixels
+
+#define				pointer_HEIGHT	11	// height of grade image in pixels
+#define				pointer_WIDTH		8		// width of grade image in pixels
 
 
 // ==========================================================================
@@ -42,6 +47,8 @@ extern const uint8_t planeBitmap2[];
 extern const uint8_t gradeBitmap[];
 extern const uint8_t gradeBitmapA[];
 extern const uint8_t gradeBitmapF[];
+extern const uint8_t triangleBitmap[];
+extern const uint8_t triangleClear[];
 
 extern const uint8_t gradeErase[];
 
