@@ -32,6 +32,10 @@
 #include "serial_debug.h"
 #include "validate.h"
 
+#define SYSTICK_LOAD_VALA 5000
+#define SYSTICK_LOAD_VALB 2500
+#define PI                3.1415926
+
 extern void initialize_serial_debug(void);
 
 ///////////////////////////////
@@ -43,19 +47,53 @@ typedef enum {IDLE_ud, UP, DOWN} up_down_t;
 typedef struct {
 	uint16_t x_loc;
 	uint16_t y_loc;
-} plane_t;
+	uint16_t livesLeft;
+	uint16_t xdirection;
+	uint16_t ydirection;
+} professor_t;
 
-struct missle {
+struct grade {
+	double x_loc;
+	double y_loc;
+	uint8_t  dirn;
+	double angle;
+	bool A; 
+	bool alive; 
+	struct grade *nxt;
+	struct grade *prev; 
+};
+
+struct student {
 	uint16_t x_loc;
 	uint16_t y_loc;
-	struct missle *nxt;
+	uint8_t  dirn;
+	double angle;
+	bool A; 
+	bool alive; 
+	struct student *nxt;
+	struct student *prev; 
 };
 
 //////////////////////////////
 // Function Prototype Next //
 ////////////////////////////
-void add_missle(void);
-bool remove_missle(struct missle* del_missle);
+void add_grade(bool A);
+bool remove_grade(struct grade* del_grade);
+void update_gradePos(void);
 
+void add_student(uint16_t xstart, uint16_t ystart, bool A);
+bool remove_student(struct student* del_student);
+void update_studentPos(void);
+
+bool checkBoundX(uint16_t x);
+bool checkBoundY(uint16_t x);
+
+void moveProfessor(); 
+void directionProfessor();
+void buzzer(bool on);
+void player2Logic(void);
+void player1Logic(void);
+
+void setUpGame(void); 
 
 #endif
