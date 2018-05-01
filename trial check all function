@@ -1,0 +1,60 @@
+void checkAll(void){
+	struct student* s_curr;
+	struct student* hitStudent;
+	struct grade* g_curr;
+	struct grade* remgrade;
+	
+	struct student* s_curr1;
+	
+	struct student* hitStudent1;
+	
+  s_curr =  s_head;
+	s_curr1 = s_head;
+ 
+	g_curr = g_head;
+  
+  while (s_curr!=NULL){
+			while (g_curr!=NULL){
+			//Check if within the x and the y coordinates of the child
+			if ((g_curr->x_loc<(s_curr->x_loc+PLANE_WIDTH/2))&&(g_curr->x_loc>(s_curr->x_loc-PLANE_WIDTH/2))){
+				if ((g_curr->y_loc<(s_curr->y_loc+PLANE_HEIGHT/2))&&(g_curr->y_loc>(s_curr->y_loc-PLANE_HEIGHT/2))){
+					if (g_curr->A==s_curr->A){
+					  printf("Removing a child \n");
+					  hitStudent = s_curr;
+					  remgrade = g_curr;
+					 remove_student(hitStudent);
+					 remove_grade(remgrade);
+					buzzer(true); 
+					}
+		    }
+      }
+			g_curr = g_curr->nxt;
+   }
+		if (((s_curr->x_loc>xpos-PLANE_WIDTH/2))&&(s_curr->x_loc<xpos+PLANE_WIDTH/2)){
+				if (((s_curr->y_loc>ypos-PLANE_WIDTH/2))&&(s_curr->y_loc<ypos+PLANE_WIDTH/2)){
+					  printf("Lose a life \n");
+					  lives--;
+					  hitStudent= s_curr;
+					 remove_student(hitStudent);
+					buzzer(true); 
+					 
+		    }
+    }
+	
+		while ((s_curr1!=NULL)&&(s_curr!=s_curr1)){
+			//Check if within the x and the y coordinates of the child
+			if ((s_curr1->x_loc <(s_curr->x_loc+PLANE_WIDTH/2))&&(s_curr1->x_loc>(s_curr->x_loc-PLANE_WIDTH/2))){
+				if ((s_curr1->y_loc<(s_curr->y_loc+PLANE_HEIGHT/2))&&(s_curr1->y_loc>(s_curr->y_loc-PLANE_HEIGHT/2))){
+					  printf("Removing a studentsss \n");
+					  hitStudent = s_curr;
+					  hitStudent1 = s_curr1;
+					  remove_student(hitStudent);
+					  remove_student(hitStudent1);
+						buzzer(true); 
+		    }
+      }
+			s_curr1 = s_curr1->nxt;
+   }
+		s_curr = s_curr->nxt;
+  }
+}
