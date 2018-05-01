@@ -1,0 +1,23 @@
+void backgroundStory(){
+	lcd_print_stringXY(msg1,1,5,LCD_COLOR_YELLOW,LCD_COLOR_BLACK);
+	lcd_print_stringXY("It's a late day working at the Lab...",3,9,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	lcd_print_stringXY("Suddenly, you hear groaning",3,10,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	lcd_print_stringXY("Afraid... you walk out...",3,11,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	lcd_print_stringXY("It's pitch black... and you see the first one",3,12,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	lcd_print_stringXY("YOUR FAVORITE STUDENTS ARE",3,13,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	//insert zombies bitmap here
+	//insert delay
+	lcd_draw_image(
+										3 ,                 // X Pos
+										zombieLetterWidth,   // Image Horizontal Width
+										15,                 // Y Pos
+										zombieLetterHeight,  // Image Vertical Height
+										zombieTextBitmap,       // Image
+										LCD_COLOR_RED,      // Foreground Color
+										LCD_COLOR_BLACK     // Background Color
+									); 
+	lcd_print_stringXY("Armed with grades you have three lives",3,75,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	lcd_print_stringXY("Pushbutton 1 for an A, pushbutton 2 for an F, encoder dial for",3,76,LCD_COLOR_GREEN,LCD_COLOR_BLACK);
+	
+
+}
