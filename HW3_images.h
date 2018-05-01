@@ -19,6 +19,10 @@
 #define				heart_HEIGHT	7	// height of grade image in pixels
 #define				heart_WIDTH		10		// width of grade image in pixels
 
+
+// Bitmap sizes for zombietextzombiesletteringillustrationcomicdesign31693178
+#define zombieLetterWidth 12
+#define zombieLetterHeight 60
 // Bitmap sizes for design3
 #define	 design3WidthPixels  41
 #define	 design3HeightPixels  66
@@ -62,7 +66,7 @@ extern const uint8_t gradeErase[];
 extern const uint8_t design1Bitmaps[];
 extern const uint8_t design2Bitmaps[];
 extern const uint8_t design3Bitmaps[];
-
+extern const uint8_t zombieTextBitmap[] ;
 extern const uint8_t microsoftSansSerif_8ptBitmaps[];
 extern const FONT_INFO microsoftSansSerif_8ptFontInfo;
 extern const FONT_CHAR_INFO microsoftSansSerif_8ptDescriptors[];
