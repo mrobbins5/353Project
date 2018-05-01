@@ -95,5 +95,8 @@ void player2Logic(void);
 void player1Logic(void);
 
 void setUpGame(void); 
-
+//collision logic
+void checkGradeAndStudent(void);
+void checkProfessorAndStudent(void);
+void checkStudentAndStudent(void);
 #endif
